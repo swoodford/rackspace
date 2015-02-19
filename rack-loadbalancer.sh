@@ -4,9 +4,9 @@
 
 # Test if jq already installed, else install it
 command -v jq >/dev/null 2>&1 || {
-  echo "Installing jq."
-  brew install jq
-  echo "jq installed."
+	echo "Installing jq."
+	brew install jq
+	echo "jq installed."
 }
 
 # Set date as variable
@@ -25,7 +25,7 @@ function choiceMenu(){
 	echo 3. Setup Monitoring on Existing Load Balancer
 	echo 4. List Load Balancers
 	echo 9. Quit
-    echo ""
+	echo ""
 	read -r -p "Menu selection #: " menuSelection
 
 	case $menuSelection in
@@ -64,8 +64,8 @@ function createLB(){
 
 	read -r -p "Enter Load Balancer Name (Client-Project): " LBNAME
 	if [[ -z $LBNAME ]]; then
-	  tput setaf 1; echo "Invalid Name!" && tput sgr0
-	  exit 1
+		tput setaf 1; echo "Invalid Name!" && tput sgr0
+		exit 1
 	fi
 
 	# HTTPS Option
@@ -181,9 +181,9 @@ function addNodes(){
 			read -r -p "Select Load Balancer #: " selectLB
 
 			# Single LB Case
-	  		LBID=$(echo "$LBIDS" | jq '.loadBalancer | .id') # | cut -d '"' -f 2)
-  			echo $LBID
-  			# More than one LB Case
+			LBID=$(echo "$LBIDS" | jq '.loadBalancer | .id') # | cut -d '"' -f 2)
+			echo $LBID
+			# More than one LB Case
 			if [[ -z $LBID ]]; then
 				LBNAMES=$(echo "$GETLBS" | jq '.loadBalancers | .[] | .name' | cut -d '"' -f 2 | nl)
 				LBIDS=$(echo "$GETLBS" | jq '.loadBalancers | .[] | .id' | nl)
@@ -196,8 +196,8 @@ function addNodes(){
 
 			fi
 			echo
-  			# LBID=$(echo "$LBID" | jq '.loadBalancer | .id' | cut -d '"' -f 2)
-	  		echo Load Balancer ID: $LBID
+			# LBID=$(echo "$LBID" | jq '.loadBalancer | .id' | cut -d '"' -f 2)
+			echo Load Balancer ID: $LBID
 		fi
 
 		# Check the Load Balancer Status
