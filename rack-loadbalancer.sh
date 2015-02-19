@@ -28,8 +28,8 @@ function choiceMenu(){
     echo ""
 	read -r -p "Menu selection #: " menuSelection
 
-    case $menuSelection in
-    	1)
+	case $menuSelection in
+		1)
 			createLB
 		;;
 		2)
