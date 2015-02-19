@@ -118,7 +118,7 @@ function createLB(){
 	echo "================================================================="
 	read -r -p "              Add Nodes to Load Balancer? (y/n) " NODES
 	echo "================================================================="
-
+	echo
 	if [[ $NODES =~ ^([yY][eE][sS]|[yY])$ ]]; then
 		addNodes
 	fi
