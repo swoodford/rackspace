@@ -18,8 +18,15 @@ DATE=$(date '+%Y-%m-%d')
 # Import set endpoint function
 . ./set-endpoint.sh
 
+# Pause
+function pause(){
+	read -p "Press any key to continue..."
+	echo
+}
+
 # Menu
 function choiceMenu(){
+	tput smul 
 	echo 1. Create new Load Balancer
 	echo 2. Add Nodes to Existing Load Balancer
 	echo 3. Setup Monitoring on Existing Load Balancer
@@ -27,6 +34,7 @@ function choiceMenu(){
 	echo 9. Quit
 	echo ""
 	read -r -p "Menu selection #: " menuSelection
+	tput sgr0
 
 	case $menuSelection in
 		1)
@@ -95,7 +103,7 @@ function createLB(){
 	  -H "X-Auth-Token: $TOKEN" \
 	  -H "Content-Type: application/json" \
 	  -H "Accept: application/json" \
-	  -d '{"loadBalancer":{"name":"'"$LBNAME"'","port":"'"$PORT"'","protocol":"'"$PROTO"'","httpsRedirect":"'"$HTTPSRD"'","algorithm":"LEAST_CONNECTIONS","virtualIps":[{"type":"PUBLIC"}],"connectionThrottle":{"maxConnections":10,"minConnections":1,"maxConnectionRate":50,"rateInterval":60}}}')
+	  -d '{"loadBalancer":{"name":"'"$LBNAME"'","port":"'"$PORT"'","protocol":"'"$PROTO"'","httpsRedirect":"'"$HTTPSRD"'","algorithm":"LEAST_CONNECTIONS","virtualIps":[{"type":"PUBLIC"}],"connectionThrottle":{"maxConnections":100,"minConnections":1,"maxConnectionRate":50,"rateInterval":60}}}')
 
 	echo $RESPONSE1 | jq .
 	echo
@@ -107,7 +115,7 @@ function createLB(){
 	#   -H "X-Auth-Token: $TOKEN" \
 	#   -H "Content-Type: application/json" \
 	#   -H "Accept: application/json" \
-	#   -d '{"connectionThrottle":{"maxConnections":10,"minConnections":1,"maxConnectionRate":50,"rateInterval":60}}')
+	#   -d '{"connectionThrottle":{"maxConnections":100,"minConnections":1,"maxConnectionRate":50,"rateInterval":60}}')
 	# echo $RESPONSE2 | jq .
 	echo
 	echo "================================================================="
@@ -138,8 +146,7 @@ function addNodes(){
 
 	echo "Server: $SERVERNAME  -  IP: $SERVERIP"
 
-	read -p "Press any key to continue..."
-	echo ""
+	pause
 
 	# Check status of LB, wait for BUILD to complete
 	# RESPONSE2=$(curl -sX GET $publicURL/loadbalancers/$LBID \
@@ -216,11 +223,7 @@ function addNodes(){
 
 	echo "LB Status: "$LBSTATUS
 
-
-	read -p "Press any key to continue..."
-	echo ""
-
-
+	pause
 
 	RESPONSE3=$(curl -sX POST $publicURL/loadbalancers/$LBID/nodes \
 	  -H "X-Auth-Token: $TOKEN" \
