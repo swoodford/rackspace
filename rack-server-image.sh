@@ -41,7 +41,7 @@ function choiceMenu(){
 	echo 1. List Server Images
 	echo 2. Create Server Images
 	echo 3. Delete Server Images
-	echo 9. Quit
+	echo Q. Quit
 	echo
 	read -r -p "Menu selection #: " menuSelection
 	tput sgr0
@@ -56,7 +56,11 @@ function choiceMenu(){
 		3)
 			deleteImage
 		;;
-		9)
+		q)
+			echo "Bye!"
+			exit 0
+		;;
+		Q)
 			echo "Bye!"
 			exit 0
 		;;
@@ -141,9 +145,15 @@ function createImage(){
 		tput smul; echo "List of Servers:" && tput sgr0
 		echo "$SERVERLIST"
 		echo
-		tput smul; read -r -p "Select Server # to Image or 0 to Image All: " imageSelection && tput sgr0
+		tput smul; read -r -p "Select Server # to Image, 0 to Image All, Q to Quit: " imageSelection && tput sgr0
 		echo
 
+		# Quit
+		if [[ $imageSelection =~ ^([qQ])$ ]]; then
+			return 1
+		fi
+
+		# Invalid
 		if [[ -z $imageSelection ]]; then
 			invalidSelection
 			return 1
@@ -235,9 +245,15 @@ function createImage(){
 # Delete server images
 function deleteImage(){
 	listImages
-	read -r -p "Select Image # to Delete: " deleteSelection
+	tput smul; read -r -p "Select Image # to Delete or Q to Quit: " deleteSelection && tput sgr0
 	echo
 
+	# Quit
+	if [[ $deleteSelection =~ ^([qQ])$ ]]; then
+		return 1
+	fi
+
+	# Invalid
 	if [[ -z $deleteSelection ]]; then
 		invalidSelection
 		return 1
