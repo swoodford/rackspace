@@ -26,13 +26,14 @@ function pause(){
 
 # Menu
 function choiceMenu(){
-	tput smul 
+	tput smul
+	echo Menu
 	echo 1. Create new Load Balancer
 	echo 2. Add Nodes to Existing Load Balancer
 	echo 3. Setup Monitoring on Existing Load Balancer
 	echo 4. List Load Balancers
-	echo 9. Quit
-	echo ""
+	echo Q. Quit
+	echo
 	read -r -p "Menu selection #: " menuSelection
 	tput sgr0
 
@@ -47,9 +48,13 @@ function choiceMenu(){
 			monitorLB
 		;;
 		4)
-			listLB
+			getLBdata
 		;;
-		9)
+		q)
+			echo "Bye!"
+			exit 0
+		;;
+		Q)
 			echo "Bye!"
 			exit 0
 		;;
@@ -61,10 +66,12 @@ function choiceMenu(){
 	esac
 }
 
+# Create new LB
 function createLB(){
 	# Set endpoint for this task
 	setendpoint cloudLoadBalancers
 
+	echo
 	echo "================================================================="
 	echo "                Create Rackspace Load Balancer"
 	echo "================================================================="
@@ -73,7 +80,7 @@ function createLB(){
 	read -r -p "Enter Load Balancer Name (Client-Project): " LBNAME
 	if [[ -z $LBNAME ]]; then
 		tput setaf 1; echo "Invalid Name!" && tput sgr0
-		exit 1
+		return 1
 	fi
 
 	# HTTPS Option
@@ -99,16 +106,16 @@ function createLB(){
 	# "connectionThrottle":{"maxConnections":100},
 
 	# Create Load Balancer
-	RESPONSE1=$(curl -sX POST $publicURL/loadbalancers \
+	CREATETHELB=$(curl -sX POST $publicURL/loadbalancers \
 	  -H "X-Auth-Token: $TOKEN" \
 	  -H "Content-Type: application/json" \
 	  -H "Accept: application/json" \
 	  -d '{"loadBalancer":{"name":"'"$LBNAME"'","port":"'"$PORT"'","protocol":"'"$PROTO"'","httpsRedirect":"'"$HTTPSRD"'","algorithm":"LEAST_CONNECTIONS","virtualIps":[{"type":"PUBLIC"}],"connectionThrottle":{"maxConnections":100,"minConnections":1,"maxConnectionRate":50,"rateInterval":60}}}')
 
-	echo $RESPONSE1 | jq .
+	echo $CREATETHELB | jq .
 	echo
 
-	LBID=$(echo "$RESPONSE1" | jq '.loadBalancer | .id' | cut -d '"' -f 2)
+	LBID=$(echo "$CREATETHELB" | jq '.loadBalancer | .id' | cut -d '"' -f 2)
 	echo Load Balancer ID: $LBID
 
 	# RESPONSE2=$(curl -sX PUT $publicURL/loadbalancers/$LBID/connectionthrottle \
@@ -132,6 +139,75 @@ function createLB(){
 	fi
 }
 
+# Get LB Data
+function getLBdata(){
+	# Change endpoint to LB
+	setendpoint cloudLoadBalancers
+
+	# Get data on all Load Balancers
+	GETLBS=$(curl -sX GET $publicURL/loadbalancers -H "X-Auth-Token: $TOKEN" -H "Accept: application/json" | python -m json.tool)
+	echo $GETLBS | jq .
+}
+
+# Select a LB
+function selectLB(){
+	# Change endpoint to LB
+	setendpoint cloudLoadBalancers
+
+	function oneLB(){
+		LBNAME=$(echo "$GETLBS" | jq '.loadBalancer | .[] | .name' | cut -d '"' -f 2 | nl)
+		LBID=$(echo "$GETLBS" | jq '.loadBalancer | .[] | .id' | nl)
+		echo "$LBNAME"
+		echo "$LBID"
+		pause
+	}
+
+	function multipleLBs(){
+		LBNAMES=$(echo "$GETLBS" | jq '.loadBalancers | .[] | .name' | cut -d '"' -f 2 | nl)
+		LBIDS=$(echo "$GETLBS" | jq '.loadBalancers | .[] | .id' | nl)
+		LBID=$(echo "$GETLBS" | jq '.loadBalancers | .[] | .id') # | cut -d '"' -f 2)
+		echo
+		echo "$LBNAMES"
+		echo "$LBIDS"
+		echo
+		read -r -p "Select Load Balancer #: " selectedLB
+		# FixMe: How is a LB selected?
+		pause
+	}
+
+	# FixMe: Test needs work
+
+	# If we don't have a LBID
+	if [[ -z $LBID ]]; then
+		# Test for number of loadbalancers
+		TESTNUMLBS=$(echo "$GETLBS" | grep -w "loadBalancer")
+		if [[ -z $TESTNUMLBS ]]; then
+			echo "Multiple LBs"
+			multipleLBs
+		fi
+
+		TESTNUMLBS=$(echo "$GETLBS" | grep -w "loadBalancers")
+		if [[ -z $TESTNUMLBS ]]; then
+			echo "One LB"
+			oneLB
+		fi
+	fi
+}
+
+function checkLBstatus(){
+	# Change endpoint to LB
+	setendpoint cloudLoadBalancers
+
+	# Check the Load Balancer Status
+	LBSTATUS=$(curl -sX GET $publicURL/loadbalancers/$LBID -H "X-Auth-Token: $TOKEN" -H "Accept: application/json" | jq '.loadBalancer | .status' | cut -d '"' -f 2)
+	while [ $LBSTATUS != "ACTIVE" ]; do
+		# echo "LB Status: "$LBSTATUS
+		echo "Waiting for Load Balancer to become active..."
+		sleep 15
+		checkLBstatus
+	done
+}
+
 function addNodes(){
 	# Set endpoint for this task
 	setendpoint cloudServersOpenStack
@@ -144,7 +220,14 @@ function addNodes(){
 	SERVERIP=$(echo "$SERVERS" | jq '.servers | .[] | .addresses | .private | .[] | .addr' | cut -d '"' -f 2)
 	# SERVERID=$(echo "$SERVERS" | jq '.servers | .[] | .id' | cut -d '"' -f 2)
 
-	echo "Server: $SERVERNAME  -  IP: $SERVERIP"
+	echo
+	echo "Servers:"
+	echo "$SERVERNAME" | sort
+	echo "IPs:"
+	echo "$SERVERIP" | sort
+	echo
+
+	# FixMe: How is a server selected?
 
 	pause
 
@@ -152,8 +235,6 @@ function addNodes(){
 	# RESPONSE2=$(curl -sX GET $publicURL/loadbalancers/$LBID \
 	#   -H "X-Auth-Token: $TOKEN" \
 	#   -H "Accept: application/json")
-
-
 
 	# function getLBdata(){
 	# 	LBSTATUS=$(echo "$RESPONSE2" | jq '.loadBalancer | .status' | cut -d '"' -f 2)
@@ -168,70 +249,44 @@ function addNodes(){
 	# 	fi
 	# }
 
-	function getLBdata(){
-		# Change endpoint to LB
-		setendpoint cloudLoadBalancers
-
-		echo Load Balancer ID? $LBID
-
-		# Get data on all Load Balancers
-		GETLBS=$(curl -sX GET $publicURL/loadbalancers -H "X-Auth-Token: $TOKEN" -H "Accept: application/json" | python -m json.tool)
-		echo $GETLBS | jq .
 		# Ensure we have the correct Load Balancer ID
-		if [[ -z $LBID ]]; then
-			LBNAME=$(echo "$GETLBS" | jq '.loadBalancer | .[] | .name' | cut -d '"' -f 2 | nl)
-			LBID=$(echo "$GETLBS" | jq '.loadBalancer | .[] | .id' | nl)
-			echo
-			echo "$LBNAMES"
-			echo "$LBIDS"
-			echo
-			read -r -p "Select Load Balancer #: " selectLB
+		# if [[ -z $LBID ]]; then
+		# 	# LBNAME=$(echo "$GETLBS" | grep -w "loadBalancer")
+		# 	# echo $LBNAME
+		# 	# echo
+		# 	# echo
+		# 	# read -r -p "Select Load Balancer #: " selectedLB
 
-			# Single LB Case
-			LBID=$(echo "$LBIDS" | jq '.loadBalancer | .id') # | cut -d '"' -f 2)
-			echo $LBID
-			# More than one LB Case
-			if [[ -z $LBID ]]; then
-				LBNAMES=$(echo "$GETLBS" | jq '.loadBalancers | .[] | .name' | cut -d '"' -f 2 | nl)
-				LBIDS=$(echo "$GETLBS" | jq '.loadBalancers | .[] | .id' | nl)
-				LBID=$(echo "$GETLBS" | jq '.loadBalancers | .[] | .id') # | cut -d '"' -f 2)
-				echo
-				echo "$LBNAMES"
-				echo "$LBIDS"
-				echo
-				read -r -p "Select Load Balancer #: " selectLB
+		# 	# Single LB Case
+		# 	# LBID=$(echo "$LBIDS" | jq '.loadBalancer | .id') # | cut -d '"' -f 2)
+		# 	# echo "Single LB Case"
+		# 	# echo $LBID
 
-			fi
-			echo
-			# LBID=$(echo "$LBID" | jq '.loadBalancer | .id' | cut -d '"' -f 2)
-			echo Load Balancer ID: $LBID
-		fi
+		# 	# More than one LB Case
+		# 	if [[ -z $LBID ]]; then
 
-		# Check the Load Balancer Status
-		function checkLBstatus(){
-			LBSTATUS=$(curl -sX GET $publicURL/loadbalancers/$LBID -H "X-Auth-Token: $TOKEN" -H "Accept: application/json" | jq '.loadBalancer | .status' | cut -d '"' -f 2)
-			while [ $LBSTATUS != "ACTIVE" ]; do
-				# echo "LB Status: "$LBSTATUS
-				echo "Waiting for Load Balancer to become active..."
-				sleep 15
-				checkLBstatus
-			done
-		}
-	}
+		# 	fi
+
+		# 	echo
+		# 	# LBID=$(echo "$LBID" | jq '.loadBalancer | .id' | cut -d '"' -f 2)
+		# 	echo Load Balancer ID: $LBID
+		# fi
+	# }
 
 	getLBdata
-
+	selectLB
+	checkLBstatus
 	echo "LB Status: "$LBSTATUS
 
 	pause
 
-	RESPONSE3=$(curl -sX POST $publicURL/loadbalancers/$LBID/nodes \
+	ADDNODETOLB=$(curl -sX POST $publicURL/loadbalancers/$LBID/nodes \
 	  -H "X-Auth-Token: $TOKEN" \
 	  -H "Content-Type: application/json" \
 	  -H "Accept: application/json" \
 	  -d '{"nodes":[{"address":"'"$SERVERIP"'","port":'"$PORT"',"condition":"ENABLED","type":"PRIMARY"}]}')
 
-	echo $RESPONSE3 | jq .
+	echo $ADDNODETOLB | jq .
 	echo
 }
 
