@@ -37,7 +37,7 @@ function invalidSelection(){
 function choiceMenu(){
 	# tput rev 
 	tput smul 
-	echo "Menu"
+	echo Menu
 	echo 1. List Server Images
 	echo 2. Create Server Images
 	echo 3. Delete Server Images
