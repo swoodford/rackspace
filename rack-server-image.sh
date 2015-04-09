@@ -36,15 +36,14 @@ function invalidSelection(){
 # Menu
 function choiceMenu(){
 	# tput rev 
-	tput smul 
-	echo Menu
+	tput smul; echo Menu && tput sgr0
 	echo 1. List Server Images
 	echo 2. Create Server Images
 	echo 3. Delete Server Images
 	echo Q. Quit
 	echo
 	read -r -p "Menu selection #: " menuSelection
-	tput sgr0
+
 
 	case $menuSelection in
 		1)
@@ -145,11 +144,11 @@ function createImage(){
 		tput smul; echo "List of Servers:" && tput sgr0
 		echo "$SERVERLIST"
 		echo
-		tput smul; read -r -p "Select Server # to Image, 0 to Image All, Q to Quit: " imageSelection && tput sgr0
+		read -r -p "Select Server # to Image, 0 to Image All, C to Cancel: " imageSelection
 		echo
 
 		# Quit
-		if [[ $imageSelection =~ ^([qQ])$ ]]; then
+		if [[ $imageSelection =~ ^([cC])$ ]]; then
 			return 1
 		fi
 
@@ -192,7 +191,7 @@ function createImage(){
 				# echo "$IMAGECREATE"
 
 				if echo "$IMAGECREATE" | grep -q "202 Accepted"; then
-					tput setaf 2; echo "Image successfully created." && tput sgr0
+					tput setaf 2; echo "Image creation request successful." && tput sgr0
 					echo
 				else
 					tput setaf 1; echo "Error creating image:"
@@ -230,7 +229,7 @@ function createImage(){
 			  -i)
 
 			if echo "$IMAGECREATE" | grep -q "202 Accepted"; then
-				tput setaf 2; echo "Image successfully created." && tput sgr0
+				tput setaf 2; echo "Image creation request successful." && tput sgr0
 				echo
 			else
 				tput setaf 1; echo "Error creating image:"
@@ -245,11 +244,11 @@ function createImage(){
 # Delete server images
 function deleteImage(){
 	listImages
-	tput smul; read -r -p "Select Image # to Delete or Q to Quit: " deleteSelection && tput sgr0
+	read -r -p "Select Image # to Delete or C to Cancel: " deleteSelection
 	echo
 
 	# Quit
-	if [[ $deleteSelection =~ ^([qQ])$ ]]; then
+	if [[ $deleteSelection =~ ^([cC])$ ]]; then
 		return 1
 	fi
 
